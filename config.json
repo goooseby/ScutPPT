@@ -1,0 +1,8 @@
+{
+  "download_dir": "C:/Users/20688/OneDrive/学习文档/ppt测试",
+  "max_workers": 8,
+  "timeout": 60,
+  "retries": 3,
+  "sleep_ms": 200,
+  "keep_images": true
+}
