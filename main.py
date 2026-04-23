@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QTextEdit, QLabel, QLineEdit, QMessageBox,
     QTreeWidget, QTreeWidgetItem, QFrame, QFileDialog,
-    QProgressBar, QDialog,QMessageBox,QProgressBar
+    QProgressBar, QDialog
 )
 
 from ui.theme import apply_app_theme
@@ -271,6 +271,7 @@ class MainWindow(QMainWindow):
         self.tree = QTreeWidget()
         self.tree.setHeaderHidden(True)
         self.tree.setUniformRowHeights(True)
+        self.tree.itemChanged.connect(self.on_tree_item_changed)
 
         # Progress bar + status
         self.progress = QProgressBar()
@@ -477,8 +478,6 @@ class MainWindow(QMainWindow):
 
             parent.setExpanded(True)
 
-        self.tree.itemChanged.connect(self.on_tree_item_changed)
-
     def on_tree_item_changed(self, item: QTreeWidgetItem, col: int):
         payload = item.data(0, Qt.UserRole) or {}
         if payload.get("type") != "group":
@@ -653,13 +652,6 @@ class MainWindow(QMainWindow):
         self._lock_main_buttons(False)
         self.btn_pause.setEnabled(False)
         self.btn_cancel.setEnabled(False)
-
-    # ---------- helpers ----------
-    def _download_dir_text(self) -> str:
-        d = self.app_cfg.download_dir or "未设置（点击设置或选择下载目录）"
-        keep = "保留原图" if self.app_cfg.keep_images else "不保留原图（合并后删除）"
-        return f"保存路径：{d}    |    原图：{keep}    |    并发：{self.app_cfg.max_workers}"
-
 
 def main():
     app = QApplication(sys.argv)

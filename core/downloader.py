@@ -3,13 +3,18 @@ import time
 import json
 import re
 import shutil
+import threading
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from urllib.parse import urlencode
 
 import requests
 from PIL import Image
+
+
+_thread_local = threading.local()
 
 
 # ---------- utils ----------
@@ -65,6 +70,14 @@ def make_session(cfg: RuntimeCfg) -> requests.Session:
     })
     s.cookies.update(cookie_str_to_dict(cfg.cookie_str))
     return s
+
+
+def _get_thread_session(cfg: RuntimeCfg) -> requests.Session:
+    session = getattr(_thread_local, "session", None)
+    if session is None:
+        session = make_session(cfg)
+        _thread_local.session = session
+    return session
 
 
 def _get_json_or_raise(r: requests.Response, url: str) -> dict:
@@ -167,23 +180,156 @@ def get_ppt_urls(cfg: RuntimeCfg, session: requests.Session, course_id: str, sub
 
 
 # ---------- download + merge ----------
-def download_one_image(session: requests.Session, url: str, fp: Path, retries: int = 3) -> bool:
+def download_one_image(
+    session: requests.Session,
+    url: str,
+    fp: Path,
+    retries: int = 3,
+    timeout: int = 30
+) -> bool:
     if fp.exists():
         return True
 
+    tmp_fp = fp.with_name(f"{fp.name}.part")
+
     for _ in range(max(1, retries)):
         try:
-            resp = session.get(url, timeout=30, stream=True)
+            resp = session.get(url, timeout=timeout, stream=True)
             if resp.status_code == 200:
                 ensure_dir(fp.parent)
-                with fp.open("wb") as f:
+                with tmp_fp.open("wb") as f:
                     for chunk in resp.iter_content(8192):
                         if chunk:
                             f.write(chunk)
+                tmp_fp.replace(fp)
                 return True
         except Exception:
             time.sleep(0.4)
+
+    try:
+        tmp_fp.unlink(missing_ok=True)
+    except Exception:
+        pass
     return False
+
+
+def _image_path(img_dir: Path, idx: int, url: str) -> Path:
+    ext = ".jpg" if url.lower().endswith(".jpg") else ".png"
+    return img_dir / f"{idx:04d}{ext}"
+
+
+def _download_image_task(cfg: RuntimeCfg, url: str, fp: Path) -> bool:
+    session = _get_thread_session(cfg)
+    return download_one_image(
+        session=session,
+        url=url,
+        fp=fp,
+        retries=cfg.retries,
+        timeout=cfg.timeout,
+    )
+
+
+def download_images(
+    cfg: RuntimeCfg,
+    session: requests.Session,
+    urls: List[str],
+    img_dir: Path,
+    log_fn=None,
+    checkpoint_fn=None,
+) -> List[Path]:
+    image_jobs: List[Tuple[int, str, Path]] = [
+        (idx, url, _image_path(img_dir, idx, url))
+        for idx, url in enumerate(urls, start=1)
+    ]
+    image_paths = [fp for _, _, fp in image_jobs]
+
+    if not image_jobs:
+        return image_paths
+
+    workers = max(1, min(int(cfg.max_workers or 1), len(image_jobs)))
+    sleep_seconds = max(0, int(cfg.sleep_ms or 0)) / 1000.0
+
+    if workers == 1:
+        for idx, url, fp in image_jobs:
+            if checkpoint_fn:
+                checkpoint_fn()
+
+            ok = download_one_image(
+                session=session,
+                url=url,
+                fp=fp,
+                retries=cfg.retries,
+                timeout=cfg.timeout,
+            )
+            if not ok and log_fn:
+                log_fn(f"⚠️ 下载失败（跳过该张）：{idx}/{len(urls)}")
+
+            if sleep_seconds > 0:
+                time.sleep(sleep_seconds)
+
+        return image_paths
+
+    if log_fn:
+        log_fn(f"并发下载 PPT 图片：{len(urls)} 张，workers={workers}")
+
+    executor = ThreadPoolExecutor(max_workers=workers)
+    pending = {}
+    next_job = 0
+
+    def submit_next() -> bool:
+        nonlocal next_job
+        if next_job >= len(image_jobs):
+            return False
+        if checkpoint_fn:
+            checkpoint_fn()
+
+        idx, url, fp = image_jobs[next_job]
+        pending[executor.submit(_download_image_task, cfg, url, fp)] = idx
+        next_job += 1
+
+        if sleep_seconds > 0:
+            time.sleep(sleep_seconds)
+        return True
+
+    try:
+        while next_job < len(image_jobs) and len(pending) < workers:
+            submit_next()
+
+        while pending:
+            if checkpoint_fn:
+                checkpoint_fn()
+
+            done, _ = wait(
+                pending,
+                timeout=0.2,
+                return_when=FIRST_COMPLETED,
+            )
+            if not done:
+                continue
+
+            for future in done:
+                idx = pending.pop(future)
+                try:
+                    ok = future.result()
+                except Exception as e:
+                    ok = False
+                    if log_fn:
+                        log_fn(f"⚠️ 下载异常（跳过该张）：{idx}/{len(urls)} -> {e}")
+
+                if not ok and log_fn:
+                    log_fn(f"⚠️ 下载失败（跳过该张）：{idx}/{len(urls)}")
+
+            while next_job < len(image_jobs) and len(pending) < workers:
+                submit_next()
+
+        return image_paths
+
+    except InterruptedError:
+        for future in pending:
+            future.cancel()
+        raise
+    finally:
+        executor.shutdown(wait=True, cancel_futures=True)
 
 
 def merge_images_to_pdf(image_paths: List[Path], pdf_path: Path) -> int:
@@ -249,21 +395,14 @@ def download_course_to_pdf(
         if not urls:
             raise RuntimeError(f"该节课无 PPT：{title} [{day}]")
 
-        image_paths: List[Path] = []
-        for idx, url in enumerate(urls, start=1):
-            if checkpoint_fn:
-                checkpoint_fn()
-
-            ext = ".jpg" if url.lower().endswith(".jpg") else ".png"
-            fp = img_dir / f"{idx:04d}{ext}"
-            image_paths.append(fp)
-
-            ok = download_one_image(session, url, fp, retries=cfg.retries)
-            if not ok and log_fn:
-                log_fn(f"⚠️ 下载失败（跳过该张）：{idx}/{len(urls)}")
-
-            if cfg.sleep_ms > 0:
-                time.sleep(cfg.sleep_ms / 1000.0)
+        image_paths = download_images(
+            cfg=cfg,
+            session=session,
+            urls=urls,
+            img_dir=img_dir,
+            log_fn=log_fn,
+            checkpoint_fn=checkpoint_fn,
+        )
 
         image_paths.sort()
         count = merge_images_to_pdf(image_paths, pdf_path)
