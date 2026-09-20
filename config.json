@@ -1,8 +1,8 @@
 {
-  "download_dir": "D:/华南理工大学",
+  "download_dir": null,
   "max_workers": 8,
   "timeout": 60,
   "retries": 3,
   "sleep_ms": 200,
-  "keep_images": true
+  "keep_images": false
 }

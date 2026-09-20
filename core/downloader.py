@@ -8,7 +8,7 @@ from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Dict, Tuple
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 import requests
 from PIL import Image
@@ -57,6 +57,8 @@ def cookie_str_to_dict(cookie_str: str) -> dict:
 
 def make_session(cfg: RuntimeCfg) -> requests.Session:
     s = requests.Session()
+    # Campus services must not follow a desktop proxy whose exit is off-campus.
+    s.trust_env = False
     s.headers.update({
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -81,19 +83,18 @@ def _get_thread_session(cfg: RuntimeCfg) -> requests.Session:
 
 
 def _get_json_or_raise(r: requests.Response, url: str) -> dict:
+    # The schedule URL includes a login token; never put it in user-visible errors.
+    location = urlsplit(url)
+    endpoint = f"{location.scheme}://{location.netloc}{location.path}"
     if r.status_code != 200:
         raise RuntimeError(
-            f"HTTP {r.status_code}\nURL: {url}\n"
-            f"Content-Type: {r.headers.get('Content-Type')}\n"
-            f"Body(head 300): {r.text[:300]}"
+            f"平台请求失败（HTTP {r.status_code}）。请检查登录状态和网络。\n{endpoint}"
         )
 
     ct = (r.headers.get("Content-Type") or "").lower()
     if "application/json" not in ct:
         raise RuntimeError(
-            f"Non-JSON response\nURL: {url}\n"
-            f"Content-Type: {r.headers.get('Content-Type')}\n"
-            f"Body(head 300): {r.text[:300]}"
+            f"平台返回了网页而非课件数据，请重新登录。\n{endpoint}"
         )
     return r.json()
 
@@ -105,6 +106,8 @@ def fetch_schedules_in_range(cfg: RuntimeCfg, session: requests.Session) -> List
 
     start_date = datetime.datetime.strptime(cfg.start_at, "%Y-%m-%d").date()
     end_date = datetime.datetime.strptime(cfg.end_at, "%Y-%m-%d").date()
+    if end_date < start_date:
+        raise ValueError("开始日期不能晚于结束日期。")
 
     current_start = start_date
     while current_start <= end_date:
@@ -126,7 +129,10 @@ def fetch_schedules_in_range(cfg: RuntimeCfg, session: requests.Session) -> List
         r = session.get(url, timeout=cfg.timeout)
         data = _get_json_or_raise(r, url)
 
-        week_list = data.get("result", {}).get("list", [])
+        result = data.get("result")
+        if not isinstance(result, dict) or not isinstance(result.get("list"), list):
+            raise RuntimeError("课表数据不完整，请重新登录后重试。")
+        week_list = result["list"]
         for day_block in week_list:
             day = day_block.get("day") or ""
             for course in day_block.get("course", []):
@@ -157,7 +163,9 @@ def get_ppt_urls(cfg: RuntimeCfg, session: requests.Session, course_id: str, sub
     data = _get_json_or_raise(r, url)
 
     urls = []
-    for item in data.get("list", []):
+    if not isinstance(data.get("list"), list):
+        raise RuntimeError("未收到有效的课件列表，请重新登录后重试。")
+    for item in data["list"]:
         try:
             c = item.get("content")
             if not c:
@@ -188,7 +196,12 @@ def download_one_image(
     timeout: int = 30
 ) -> bool:
     if fp.exists():
-        return True
+        try:
+            with Image.open(fp) as existing:
+                existing.verify()
+            return True
+        except Exception:
+            fp.unlink(missing_ok=True)
 
     tmp_fp = fp.with_name(f"{fp.name}.part")
 
@@ -201,10 +214,15 @@ def download_one_image(
                     for chunk in resp.iter_content(8192):
                         if chunk:
                             f.write(chunk)
+                with Image.open(tmp_fp) as downloaded:
+                    downloaded.verify()
                 tmp_fp.replace(fp)
                 return True
         except Exception:
             time.sleep(0.4)
+        finally:
+            if 'resp' in locals() and hasattr(resp, 'close'):
+                resp.close()
 
     try:
         tmp_fp.unlink(missing_ok=True)
@@ -236,6 +254,7 @@ def download_images(
     img_dir: Path,
     log_fn=None,
     checkpoint_fn=None,
+    progress_fn=None,
 ) -> List[Path]:
     image_jobs: List[Tuple[int, str, Path]] = [
         (idx, url, _image_path(img_dir, idx, url))
@@ -263,6 +282,8 @@ def download_images(
             )
             if not ok and log_fn:
                 log_fn(f"⚠️ 下载失败（跳过该张）：{idx}/{len(urls)}")
+            if progress_fn:
+                progress_fn(idx, len(urls))
 
             if sleep_seconds > 0:
                 time.sleep(sleep_seconds)
@@ -275,6 +296,7 @@ def download_images(
     executor = ThreadPoolExecutor(max_workers=workers)
     pending = {}
     next_job = 0
+    completed = 0
 
     def submit_next() -> bool:
         nonlocal next_job
@@ -308,6 +330,7 @@ def download_images(
                 continue
 
             for future in done:
+                completed += 1
                 idx = pending.pop(future)
                 try:
                     ok = future.result()
@@ -318,6 +341,8 @@ def download_images(
 
                 if not ok and log_fn:
                     log_fn(f"⚠️ 下载失败（跳过该张）：{idx}/{len(urls)}")
+                if progress_fn:
+                    progress_fn(completed, len(urls))
 
             while next_job < len(image_jobs) and len(pending) < workers:
                 submit_next()

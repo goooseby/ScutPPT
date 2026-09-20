@@ -1,0 +1,253 @@
+/* 课页视觉优化原型：保留现有结构和动线，只加强清晰度、层级与可点击性。 */
+:root{
+  --bg:#f3f6f4;
+  --surface:#ffffff;
+  --ink:#172722;
+  --muted:#596a64;
+  --line:#d4ded9;
+  --green:#176e58;
+  --green-dark:#0e5744;
+  --soft:#e3f0ea;
+  --amber:#8a651f;
+  --radius:13px;
+  --shadow:0 8px 24px rgba(23,49,40,.07);
+  font-size:15px;
+  color:var(--ink);
+  background:var(--bg);
+  text-rendering:optimizeLegibility;
+}
+
+body{font-weight:400}
+button,input,select{font-size:13px}
+button{min-height:38px;border-color:#cfdad5;border-radius:8px;padding:9px 15px;font-weight:550;background:#fff}
+button:hover:not(:disabled){background:#edf4f0;border-color:#9fb9ae}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid #297e68;outline-offset:2px}
+.primary{background:var(--green);border-color:var(--green);font-weight:650;box-shadow:0 2px 5px rgba(14,87,68,.15)}
+.secondary{background:#e5f1eb;color:#115e4a;border-color:#c7dfd4}
+.quiet{color:#465a52}
+svg.icon{width:20px;height:20px;stroke-width:1.8}
+
+.sidebar{width:236px;padding:27px 16px 16px;border-color:#d5ded9}
+.brand{gap:12px;padding:0 10px;font-size:22px;color:#102a22}
+.brand-mark{width:42px;height:42px;border-radius:12px;background:#176e58;box-shadow:0 3px 9px rgba(16,88,68,.18)}
+.brand small{font-size:11px;color:#52645e;letter-spacing:1px;margin-top:3px}
+.brand-app{color:#52645e!important;font-size:10px!important;font-weight:600!important}
+.workspace-label{font-size:11px;color:#6d7c77;margin:39px 16px 12px;letter-spacing:1.2px}
+.nav-item{gap:13px;min-height:44px;padding:11px 15px;font-size:14px;color:#43554f;border-radius:9px}
+.nav-item.active{background:#dfede7;color:#0f634e;font-weight:700}
+.nav-item.active svg{stroke-width:2.1}
+.nav-item .nav-count{font-size:11px;color:#0f634e;background:#c9e2d7}
+.storage-card{padding:16px 14px;background:#fafcfb;border-color:#d3ddd8}
+.storage-card>div:first-child{font-size:12px;color:#263a33}
+.storage-card p{font-size:12px;line-height:1.7;color:#596a64}
+.storage-card small{font-size:10px;color:#66766f}
+.prototype-label{font-size:10px;color:#677771}
+
+.topbar{height:68px;padding:0 36px;border-color:#d5ded9}
+.topbar #breadcrumb{font-size:12px;color:#52635d}
+.topbar #breadcrumb span{color:#9aa7a2}
+.demo-tag{font-size:11px;color:#5f7069;background:#f2f5f3;border:1px solid #dbe2de;border-radius:999px;padding:5px 10px;letter-spacing:.2px}
+.avatar{width:32px;height:32px;font-size:12px;color:#506058;background:#eef1ed;border-color:#dce2dd}
+
+main{padding:36px 38px}
+.page-heading{margin-bottom:29px}
+.eyebrow{font-size:11px;color:#176e58;letter-spacing:2.1px;font-weight:750;margin-bottom:9px}
+h1{font-size:30px;line-height:1.25;letter-spacing:-.6px;font-weight:750;margin-bottom:9px;color:#142821}
+h2{font-size:18px;font-weight:700}
+h3{font-size:15px;font-weight:650}
+.subtitle{font-size:13px;line-height:1.7;color:#5a6c65}
+.actions{gap:10px}
+.actions button{font-size:13px}
+
+.toolbar{gap:18px;margin-bottom:21px}
+.tabs{gap:25px;border-color:#d2dcd7}
+.tabs button{font-size:13px;color:#64736e;padding:12px 0 15px;min-height:42px}
+.tabs button.active{color:#142821;font-weight:700}
+.tabs button.active:after{height:3px}
+.tabs .count{font-size:11px;color:#53655d;background:#e3e9e6}
+.search-box{min-width:230px;padding:10px 12px;border-color:#cfd9d4;border-radius:8px;color:#667770}
+.search-box input{font-size:13px;width:170px}
+.library-tools{font-size:12px;color:#5e6f68;margin-bottom:19px}
+.library-tools select{font-size:12px;color:#52635d}
+
+.continue-card{border-color:#c8ddd2;background:linear-gradient(105deg,#e5f1eb,#f8faf8);padding:25px 27px;box-shadow:0 6px 18px rgba(28,73,58,.06)}
+.continue-copy .overline{font-size:11px;color:#3f715f;font-weight:650}
+.continue-copy h2{font-size:19px}
+.continue-copy p{font-size:12px;color:#596a64}
+.continue-copy .tiny-progress{font-size:11px;color:#4e695e}
+
+.course-grid{gap:21px}
+.course-card{border-color:#d1dcd7;border-radius:12px;box-shadow:var(--shadow)}
+.course-card:hover{border-color:#91b4a5;box-shadow:0 10px 28px rgba(23,72,55,.11)}
+.course-info{padding:19px 20px 18px}
+.course-info h3{font-size:15px;line-height:1.5;color:#172722}
+.course-info .meta{font-size:12px;color:#5d6e67;margin-bottom:17px}
+.course-info-bottom{font-size:11px;color:#65756f}
+.badge{font-size:11px;font-weight:600;padding:5px 8px;border-radius:5px}
+.badge.pending{background:#f7edd8;color:#765516}
+.badge.editing{background:#e8edf8;color:#4c6292}
+.badge.exported{background:#def0e7;color:#176149}
+.badge.changed{background:#f7e7dc;color:#914c32}
+
+.panel{border-color:#d0dad5;border-radius:12px;box-shadow:0 3px 12px rgba(31,58,48,.035)}
+.source-card h3{font-size:15px}
+.source-card p{font-size:12px;color:#596b64}
+.source-card>button{font-size:13px}
+.source-logo{height:52px;width:52px}
+.scan-bar,.scan-course-heading{padding:20px 22px}
+label.field{font-size:12px;color:#52645d;font-weight:550}
+input[type=date],input[type=text],select.field-input,input[type=number]{font-size:13px;min-height:39px;border-color:#cbd7d1;color:#1b3028}
+.scan-bar .scan-note,.scan-group-tools{font-size:12px;color:#5b6d65}
+.scan-course-heading span,.scan-lectures small{font-size:12px;color:#5b6d65}
+.scan-lectures label{font-size:13px;min-height:48px}
+.scan-bottom{font-size:12px;color:#53655e;padding:18px 22px}
+.helper-note{font-size:12px;color:#566961;line-height:1.75}
+
+table{font-size:13px}
+th{font-size:11px;font-weight:650;color:#54665f;background:#f7f9f8;padding:15px 20px}
+td{padding:18px 20px;color:#344941;border-color:#e1e7e4}
+td small{font-size:11px;color:#61726b}
+td .course-title{font-weight:650;color:#172722}
+.session-table{border-color:#d0dad5;border-radius:12px;box-shadow:0 3px 12px rgba(31,58,48,.035);overflow:visible}
+.session-table table{table-layout:auto}
+.session-table th{font-size:12px}
+.session-table th:nth-child(2){min-width:320px}
+.session-table td{padding:17px 18px;font-size:14px;transition:background .12s}
+.session-table td[data-course-session]{cursor:pointer}
+.session-row:has(td[data-course-session]:hover) td[data-course-session]{background:#e8f2ed}
+.session-row:has(td[data-course-session]:hover) .session-entry{box-shadow:inset 3px 0 #176e58}
+.session-entry{padding:6px 8px!important}
+.session-title{width:100%;min-height:72px;padding:12px 14px;margin:0;border:0;border-radius:9px;background:transparent;color:#182b24;font-size:14px;font-weight:500;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:9px;text-align:left}
+.session-title:hover:not(:disabled){background:transparent;border-color:transparent}
+.session-title-main{display:flex;align-items:center;gap:18px;line-height:1.45}
+.session-title-main strong{font-size:14px;font-weight:750;color:#10271f}
+.session-title-main>span{font-size:14px;color:#21362e}
+.session-title small{font-size:12px;color:#536860}
+.session-action-cell{position:relative;min-width:255px}
+.session-actions{display:flex;align-items:center;gap:8px;position:relative;width:max-content}
+.session-actions>button{height:40px;min-height:40px;padding:8px 15px}
+.session-actions .session-more{width:40px;min-width:40px;padding:0;border-color:transparent;color:#3e564c}
+.session-actions .session-more:hover,.session-actions .session-more.active{background:#e4f0ea;border-color:#bdd4c9;color:#0f634e}
+.session-menu{position:absolute;right:0;top:47px;z-index:30;width:190px;padding:7px;background:#fff;border:1px solid #c9d5cf;border-radius:10px;box-shadow:0 12px 32px rgba(20,45,36,.18);display:flex;flex-direction:column;gap:3px}
+.session-row:nth-last-child(-n+2) .session-menu{top:auto;bottom:47px}
+.session-menu button{width:100%;min-height:39px;padding:9px 11px;border:0;background:transparent;justify-content:flex-start;font-size:13px;font-weight:550}
+.session-menu button:hover:not(:disabled){background:#edf4f0}
+.session-menu button.danger{color:#963e34}
+.session-menu svg{width:18px;height:18px}
+.course-controls{font-size:13px;color:#52645d;gap:11px}
+.course-batch,.review-completion{font-size:13px;border-color:#c7ddd2;background:#e5f1eb;padding:17px 19px;border-radius:10px}
+.course-batch>span small{font-size:11px;color:#53675e}
+
+.editor-heading h1{font-size:25px}
+.editor-heading .subtitle{font-size:12px}
+.back-button{font-size:12px;color:#52675e;font-weight:600}
+.review-workspace{grid-template-columns:190px minmax(0,1fr);gap:25px}
+.lecture-rail{border-color:#d3ddd8;padding-right:14px}
+.rail-heading{font-size:14px}
+.rail-heading p{font-size:12px;color:#5c6e66}
+.lecture-rail>button{font-size:13px;padding:13px 12px;border-radius:9px;min-height:76px}
+.lecture-rail>button.active{background:#dcece4;color:#105d49;box-shadow:inset 3px 0 #176e58}
+.lecture-rail span{font-size:12px}
+.lecture-rail small{font-size:11px;color:#566a61}
+.editor-toolbar{border-color:#cfd9d4;border-radius:10px;padding:12px 14px;box-shadow:0 4px 14px rgba(25,55,44,.045)}
+.editor-toolbar button,.segmented button{font-size:12px;min-height:34px}
+.editor-toolbar .selected-label{font-size:12px;color:#52655d;font-weight:600}
+.segmented{background:#e8eeeb}
+.segmented button.active{color:#154f3f;font-weight:650}
+.page-tile{border-color:#cad5d0;border-radius:9px;box-shadow:0 2px 8px rgba(29,55,46,.04)}
+.page-tile.selected{border-color:#176e58;box-shadow:0 0 0 2px rgba(23,110,88,.22)}
+.page-caption{font-size:11px;color:#596c63;padding:9px 10px}
+.page-caption strong{font-size:12px;color:#344a41;font-weight:650}
+.page-caption button{font-size:11px;color:#4e635a}
+.page-tile.excluded .page-art:after{font-size:11px;color:#695a35;border-color:#d9cfb8;padding:5px 9px}
+.preview-panel{border-color:#cdd8d2;border-radius:11px;box-shadow:0 5px 18px rgba(30,59,48,.06)}
+.preview-title{font-size:13px;font-weight:700;padding:15px 17px}
+.preview-title span{font-size:11px;color:#61726b}
+.preview-controls{font-size:11px;color:#52655d;padding:12px 16px}
+.preview-detail h3{font-size:13px}
+.preview-detail p{font-size:12px;color:#566a61}
+.preview-detail>button{font-size:12px}
+.keyboard-note{font-size:11px;color:#63736d}
+kbd{font-size:10px;color:#4e6158;border-color:#ccd7d1}
+.editor-summary{font-size:12px;color:#53665d}
+.saved-label{font-size:11px;color:#47715e}
+
+.task-list{gap:14px}
+.task-row{border-color:#d0dad5;border-radius:12px;padding:21px 22px;box-shadow:0 3px 12px rgba(31,58,48,.035)}
+.task-icon{height:46px;width:46px}
+.task-copy h3{font-size:14px;color:#172722}
+.task-copy p{font-size:12px;color:#596b64}
+.task-row .actions button{font-size:12px}
+
+.settings-section{padding:25px 27px}
+.settings-section h2{font-size:18px}
+.setting-row h3{font-size:14px}
+.setting-row p{font-size:12px;color:#596b64}
+.setting-row select{font-size:12px}
+.setting-path{font-size:12px;color:#485e54;background:#f2f6f3;border-color:#cedad3}
+.setting-path.unset-path{color:#725a20;background:#fbf6e9;border-color:#e5d9b9;font-style:italic}
+.guide-card{background:#e7f1e9;border-color:#cddfce}
+.guide-card h3{font-size:14px;color:#355f43}
+.guide-card p{font-size:12px;color:#536c57}
+
+.empty{color:#596b64;border-color:#cbd8d2;padding:72px 25px}
+.empty h2{font-size:19px;color:#304d40}
+.empty p{font-size:13px}
+#statusbar{height:38px;padding:0 29px;font-size:11px;color:#596a64;border-color:#d4ded9}
+#statusbar button{font-size:11px;font-weight:650}
+#toast{font-size:13px;background:#213d33;border-color:#213d33}
+
+dialog{border-color:#c7d4ce;border-radius:14px;box-shadow:0 22px 80px rgba(20,43,35,.27)}
+dialog::backdrop{background:rgba(18,36,30,.42);backdrop-filter:none}
+.modal-header{padding:25px 28px 17px}
+.modal-header h2{font-size:21px}
+.modal-body{padding:0 28px 26px}
+.modal-body p{font-size:13px;color:#52655d;line-height:1.8}
+.modal-body .notice{font-size:12px;color:#725a20;background:#f6eedb}
+.modal-actions{padding:18px 28px;background:#f6f8f7;border-color:#d7e0dc}
+.modal-actions button{font-size:13px}
+.modal-stat span{font-size:11px;color:#607269}
+.help-steps li{font-size:13px;color:#435950}
+.fullscreen-modal{box-shadow:0 14px 44px rgba(20,43,35,.22)}
+.fullscreen-modal .modal-body{contain:none}
+.fullscreen-modal .modal-header h2{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fullscreen-shortcuts{display:flex;align-items:center;gap:18px;margin-left:auto;padding:0 12px;color:#596a64;font-size:12px}
+.fullscreen-shortcuts span{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.fullscreen-shortcuts kbd{font-size:11px;font-weight:650;color:#31584a;border-color:#bfcfc7;background:#f7faf8}
+
+/* Keep Chromium's compositor graph simple on Windows and virtual displays. */
+.course-card,.page-tile,button,#toast{transition:none}
+.course-card:hover{transform:none}
+.page-tile.excluded .slide{filter:none}
+.editor-toolbar,.preview-panel,.lecture-rail{position:static}
+
+@media(max-width:1200px){
+  .sidebar{width:205px}
+  main{padding:30px 28px}
+  .review-workspace{grid-template-columns:158px minmax(0,1fr);gap:18px}
+  .review-workspace .editor-layout{grid-template-columns:minmax(0,1fr) 250px}
+  .session-table{overflow:auto}
+  .session-table th:nth-child(2){min-width:280px}
+  .session-table td{padding:15px 13px}
+}
+@media(max-width:1000px){
+  :root{font-size:14px}
+  .topbar{padding:0 25px}
+  .review-workspace .editor-layout{grid-template-columns:1fr}
+  .page-heading{align-items:flex-start}
+  .page-heading>.actions{flex-wrap:wrap;justify-content:flex-end}
+}
+@media(max-width:950px){
+  .sidebar{width:176px}
+  .brand{font-size:19px}
+  .nav-item{font-size:13px}
+  .course-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:700px){
+  main{padding:24px 18px}
+  h1{font-size:27px}
+  .review-workspace{grid-template-columns:1fr}
+  .lecture-rail{border:0;padding-right:0}
+  .fullscreen-shortcuts{gap:8px;padding:0 4px}
+  .fullscreen-shortcuts span:first-child{display:none}
+}

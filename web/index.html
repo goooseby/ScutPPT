@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>课页 · 个人课件资料库</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="refresh.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#library" aria-label="返回资料库"><span class="brand-mark">页<span></span></span><span>课页<span class="brand-app" style="font-size:10px;margin-left:6px;letter-spacing:1px">KEYE</span><small>个人课件资料库</small></span></a>
+      <div class="workspace-label">我的工作空间</div>
+      <nav id="nav" aria-label="主导航"></nav>
+      <div class="sidebar-bottom">
+        <div class="storage-card"><div><span data-icon="database"></span><strong>本地资料库</strong><span class="local-dot"></span></div><p>原始页面安全保留，整理随时继续。</p><div class="storage-meter"><span></span></div><small>原始资料 · 保存在本机</small></div>
+        <button class="nav-item" data-nav="settings"><span data-icon="settings"></span>设置</button>
+        <div class="prototype-label"><span></span>个人课件资料库 <span class="prototype-version">v0.4</span></div>
+      </div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar"><div id="breadcrumb">工作空间 <span>/</span> 资料库</div><div class="topbar-right"><span class="demo-tag">本地资料库</span><button class="icon-button" id="help-button" title="查看使用说明" aria-label="查看使用说明" data-icon="help"></button><span class="avatar">我</span></div></header>
+      <main id="main"></main>
+      <footer id="statusbar"></footer>
+    </div>
+  </div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <dialog id="modal"><div id="modal-content"></div></dialog>
+  <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+  <script src="layout.js"></script>
+  <script src="covers.js"></script>
+  <script src="app.js"></script>
+<script src="courses.js"></script>
+</body>
+</html>

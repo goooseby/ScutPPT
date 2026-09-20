@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GetPPTApp · 课件资料库</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#library" aria-label="返回资料库"><span class="brand-mark">G<span></span></span><span>GetPPT<span class="brand-app">App</span><small>个人课件资料库</small></span></a>
+      <div class="workspace-label">我的工作空间</div>
+      <nav id="nav" aria-label="主导航"></nav>
+      <div class="sidebar-bottom">
+        <div class="storage-card"><div><span data-icon="database"></span><strong>本地资料库</strong><span class="local-dot"></span></div><p>原始页面安全保留，整理随时继续。</p><div class="storage-meter"><span></span></div><small>示例资料 · 保存在当前浏览器</small></div>
+        <button class="nav-item" data-nav="settings"><span data-icon="settings"></span>设置</button>
+        <div class="prototype-label"><span></span>交互原型 <span class="prototype-version">v0.1</span></div>
+      </div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar"><div id="breadcrumb">工作空间 <span>/</span> 资料库</div><div class="topbar-right"><span class="demo-tag">示例数据</span><button class="icon-button" id="help-button" title="查看原型体验说明" aria-label="查看原型体验说明" data-icon="help"></button><span class="avatar">我</span></div></header>
+      <main id="main"></main>
+      <footer id="statusbar"></footer>
+    </div>
+  </div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <dialog id="modal"><div id="modal-content"></div></dialog>
+  <script src="app.js"></script>
+</body>
+</html>
