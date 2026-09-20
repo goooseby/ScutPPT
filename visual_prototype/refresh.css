@@ -29,7 +29,7 @@ svg.icon{width:20px;height:20px;stroke-width:1.8}
 
 .sidebar{width:236px;padding:27px 16px 16px;border-color:#d5ded9}
 .brand{gap:12px;padding:0 10px;font-size:22px;color:#102a22}
-.brand-mark{width:42px;height:42px;border-radius:12px;background:#176e58;box-shadow:0 3px 9px rgba(16,88,68,.18)}
+.brand-mark{width:42px;height:42px;border-radius:10px;background:transparent;box-shadow:0 3px 9px rgba(13,113,196,.18);display:block;object-fit:contain}
 .brand small{font-size:11px;color:#52645e;letter-spacing:1px;margin-top:3px}
 .brand-app{color:#52645e!important;font-size:10px!important;font-weight:600!important}
 .workspace-label{font-size:11px;color:#6d7c77;margin:39px 16px 12px;letter-spacing:1.2px}

@@ -1,30 +1,51 @@
-"""Build Windows and preview icon files from the 课页 word mark."""
+"""Render the canonical SVG logo to the PNG and Windows ICO app assets."""
 from pathlib import Path
+import shutil
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
+from PySide6.QtCore import QByteArray, QRectF, Qt
+from PySide6.QtGui import QGuiApplication, QImage, QPainter
+from PySide6.QtSvg import QSvgRenderer
 
 
-ROOT = Path(__file__).parent
+ROOT = Path(__file__).resolve().parent.parent
+ASSETS = ROOT / "assets"
+PROTOTYPE = ROOT / "visual_prototype"
 
 
 def build():
-    size = 512
-    image = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
-    draw.rounded_rectangle((20, 20, 492, 492), radius=126, fill='#176e58')
-    font_path = Path('C:/Windows/Fonts/msyhbd.ttc')
-    if not font_path.exists():
-        font_path = Path('C:/Windows/Fonts/msyh.ttc')
-    font = ImageFont.truetype(str(font_path), 292)
-    text = '页'
-    box = draw.textbbox((0, 0), text, font=font)
-    x = (size - (box[2] - box[0])) / 2 - box[0]
-    y = (size - (box[3] - box[1])) / 2 - box[1] - 8
-    draw.text((x, y), text, font=font, fill='white')
-    draw.rounded_rectangle((330, 330, 424, 424), radius=12, outline='#d7eee4', width=19)
-    image.save(ROOT / 'app-icon.png')
-    image.save(ROOT / 'app-icon.ico', sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)])
+    app = QGuiApplication.instance() or QGuiApplication([])
+    renderer = QSvgRenderer(QByteArray((ASSETS / "app-icon.svg").read_bytes()))
+    if not renderer.isValid():
+        raise RuntimeError("assets/app-icon.svg is not a valid SVG")
+
+    canvas = QImage(1024, 1024, QImage.Format.Format_ARGB32_Premultiplied)
+    canvas.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(canvas)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+    painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+    renderer.render(painter, QRectF(0, 0, 1024, 1024))
+    painter.end()
+
+    source_path = ASSETS / ".app-icon-source.png"
+    if not canvas.save(str(source_path), "PNG"):
+        raise RuntimeError("failed to render app icon")
+    try:
+        with Image.open(source_path) as source:
+            icon = source.convert("RGBA").resize((512, 512), Image.Resampling.LANCZOS)
+            icon.save(ASSETS / "app-icon.png", optimize=True)
+            icon.save(
+                ASSETS / "app-icon.ico",
+                format="ICO",
+                sizes=[(16, 16), (20, 20), (24, 24), (32, 32), (40, 40),
+                       (48, 48), (64, 64), (128, 128), (256, 256)],
+            )
+    finally:
+        source_path.unlink(missing_ok=True)
+
+    for name in ("app-icon.svg", "app-icon.png", "app-icon.ico"):
+        shutil.copyfile(ASSETS / name, PROTOTYPE / name)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     build()

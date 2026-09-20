@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./assets/app-icon.png" width="96" alt="课页图标">
+  <img src="./assets/app-icon.svg" width="96" alt="课页图标">
   <h1>课页 · Keye</h1>
   <p>把课堂课件的获取、整理与 PDF 导出，放进一个清楚的工作流。</p>
   <p>
