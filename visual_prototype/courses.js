@@ -43,17 +43,9 @@ function renderEditor(){
   const index=items.findIndex(x=>x.id===m.id);
   main.querySelector('.back-button').dataset.nav='course/'+(m.courseId||'unfiled');
   main.querySelector('.back-button').innerHTML=icon('left')+'返回 '+esc(c.title);
-  const rail=document.createElement('aside');rail.className='lecture-rail';
-  rail.innerHTML=`<div class="rail-heading"><strong>${esc(c.title)}</strong><p>本次范围 ${items.length} 份 · 第 ${index+1} 份</p></div>${items.map(x=>`<button data-open="${x.id}" class="${x.id===m.id?'active':''}"><strong>${esc(x.day)}</strong><span>${esc(x.note||x.title)}</span><small>${reviewed(x)?'✓ 已整理':'待整理'} · ${x.pages-x.excluded.length} 页保留</small></button>`).join('')}`;
-  const wrapper=document.createElement('div');wrapper.className='review-workspace';
-  const content=document.createElement('section');content.className='review-content';
-  while(main.firstChild)content.append(main.firstChild);
-  wrapper.append(rail,content);main.append(wrapper);
-  const active=rail.querySelector('button.active');
-  if(active)rail.scrollTop=Math.max(0,active.offsetTop-rail.offsetTop-100);
   const completion=document.createElement('div');completion.className='review-completion';
   completion.innerHTML=`<span>${reviewed(m)?'已确认这份课件整理完成':'确认本次课的页面后，再继续下一份。'} · ${exportBadge(m)}</span><button class="primary" data-course-action="complete" ${view.saving?'disabled':''}>${index<items.length-1?'标记已整理，处理下一份':'标记已整理，返回课程'}</button>`;
-  content.append(completion);
+  main.append(completion);
 }
 
 function renderAcquire(){

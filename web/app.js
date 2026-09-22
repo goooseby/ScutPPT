@@ -68,9 +68,9 @@ function hydrate(){document.querySelectorAll('[data-icon]').forEach(el=>el.inner
 function renderShell(){
   document.body.classList.toggle('editing-course',view.page==='editor');
   const running=state.tasks.filter(t=>['running','paused'].includes(t.status)).length;
-  $('#nav').innerHTML=[['library','资料库','library'],['acquire','获取课件','download'],['tasks','任务','tasks']].map(([id,label,i])=>`<button class="nav-item ${(view.page===id||(id==='library'&&['editor','course'].includes(view.page)))?'active':''}" data-nav="${id}">${icon(i)}${label}${id==='tasks'&&running?`<span class="nav-count">${running}</span>`:''}</button>`).join('');
+  $('#nav').innerHTML=[['library','资料库','library'],['acquire','获取课件','download'],['tasks','任务','tasks'],['about','关于','about']].map(([id,label,i])=>`<button class="nav-item ${(view.page===id||(id==='library'&&['editor','course'].includes(view.page)))?'active':''}" data-nav="${id}">${icon(i)}${label}${id==='tasks'&&running?`<span class="nav-count">${running}</span>`:''}</button>`).join('');
   $('[data-nav="settings"]').classList.toggle('active',view.page==='settings');
-  $('#breadcrumb').innerHTML=`工作空间 <span>/</span> ${view.page==='editor'?`资料库 <span>/</span> ${esc(material()?.title||'课件整理')}`:({course:'课程课件',library:'资料库',acquire:'获取课件',tasks:'任务',settings:'设置'}[view.page])}`;
+  $('#breadcrumb').innerHTML=`工作空间 <span>/</span> ${view.page==='editor'?`资料库 <span>/</span> ${esc(material()?.title||'课件整理')}`:({course:'课程课件',library:'资料库',acquire:'获取课件',tasks:'任务',about:'关于',settings:'设置'}[view.page])}`;
   const m=view.page==='editor'?material():null;
   $('#statusbar').innerHTML=`<span class="status-left"><i class="dot"></i>${m?`共 ${m.pages} 页 · 保留 ${m.pages-m.excluded.length} 页 · 排除 ${m.excluded.length} 页`:running?`${running} 项后台任务`:'课页 · 资料与整理记录保存在本机'}</span><span>${running?`<button data-nav="tasks">查看 ${running} 项任务 →</button>`:'原始页面保留，随时重新整理'}</span>`;
 }
@@ -81,11 +81,11 @@ function route(){
     if(view.materialId!==id){view.selected.clear();view.selectionAnchor=null;view.undo=[];view.pageFilter='all';}
     view.materialId=id;view.currentPage=state.materials.find(m=>m.id===id).lastPage||1;view.page='editor';
     state.lastMaterial=id;call('openMaterial',{id}).catch(fail);
-  }else if(target==='course'){view.page='course';if(view.courseId!==id){view.courseSelected=new Set();view.courseFilter='all';view.courseFrom='';view.courseTo='';}view.courseId=id;}else view.page=['library','acquire','tasks','settings'].includes(target)?target:'library';
+  }else if(target==='course'){view.page='course';if(view.courseId!==id){view.courseSelected=new Set();view.courseFilter='all';view.courseFrom='';view.courseTo='';}view.courseId=id;}else view.page=['library','acquire','tasks','about','settings'].includes(target)?target:'library';
   render();main.scrollTop=0;
 }
 function navigate(page){if(view.saving)return toast('正在保存，请稍候再切换。');if(location.hash===`#${page}`)route();else location.hash=page;}
-function render(){renderShell();({library:renderLibrary,course:renderCourse,acquire:renderAcquire,editor:renderEditor,tasks:renderTasks,settings:renderSettings}[view.page]||renderLibrary)();hydrate();}
+function render(){renderShell();({library:renderLibrary,course:renderCourse,acquire:renderAcquire,editor:renderEditor,tasks:renderTasks,about:renderAbout,settings:renderSettings}[view.page]||renderLibrary)();hydrate();}
 function cover(m){
   const course=(state.courseLibrary||[]).find(c=>c.id===m.courseId);
   return generatedCover({...m,title:course?.title||m.title,term:course?.term||m.term,
@@ -112,6 +112,11 @@ function renderTasks(){
 function renderSettings(){
   const s=state.settings;
   main.innerHTML=`<div class="page-heading"><div><div class="eyebrow">MAKE ROOM FOR YOUR KNOWLEDGE</div><h1>设置</h1><p class="subtitle">让资料保存有序，让日常整理更顺手。</p></div></div><div class="settings-grid"><div><section class="panel settings-section"><h2>资料库与存储</h2><div class="setting-row"><div><h3>资料库位置</h3><p>包含原始素材、预览和整理记录，可以整体备份。</p></div><div class="actions"><button data-action="open-library">打开目录</button><button data-action="choose-library">切换资料库</button></div></div><div class="setting-path">${esc(s.libraryDir)}</div><div class="setting-row"><div><h3>保留原始页面</h3><p>排除不删除图片；回收站中的课件可以恢复。</p></div><span class="badge exported">默认保留</span></div><div class="setting-row"><div><h3>自动保存整理进度</h3><p>页面选择写入本地资料库，重新打开可继续。</p></div><span class="badge exported">已开启</span></div></section><section class="panel settings-section"><h2>下载与导出</h2><div class="setting-row"><div><h3>获取课件后</h3><p>下一次获取课件的默认处理方式。</p></div><select id="default-export" class="field-input"><option value="review" ${s.exportMode==='review'?'selected':''}>先整理，再导出</option><option value="direct" ${s.exportMode==='direct'?'selected':''}>直接导出 PDF</option></select></div><div class="setting-row"><div><h3>默认 PDF 导出目录</h3><p>首次导出时选择并记住，也可在这里主动修改。</p></div><button data-action="choose-export-dir">选择目录</button></div><div class="setting-path ${s.exportDir?'':'unset-path'}">${s.exportDir?esc(s.exportDir):'尚未设置 · 首次导出时再选择'}</div><div class="settings-numbers">${[['maxWorkers','图片并发数',1,32],['timeout','请求超时（秒）',5,600],['retries','下载尝试次数',1,10],['sleepMs','请求间隔（毫秒）',0,5000]].map(([id,label,min,max])=>`<label class="field">${label}<input type="number" id="setting-${id}" min="${min}" max="${max}" value="${s[id]}"></label>`).join('')}</div><button class="secondary" data-action="save-settings">保存下载参数</button></section></div><aside class="guide-card">${icon('folder')}<h3 style="margin-top:16px">资料留在本机</h3><p>课页自动生成课程封面；实际页面预览来自下载的课件或导入文件。</p><hr><div class="number">${activeMaterials().length}<span style="font-size:12px;margin-left:8px">份课件</span></div><p>SQLite 保存整理记录<br>原始素材长期保留<br>PDF 单独导出</p><hr><p>切换资料库会打开另一个目录，不会移动或删除当前资料。备份时请先退出应用，再复制整个资料库目录。</p></aside></div>`;
+}
+function renderAbout(){
+  main.innerHTML=`<section class="about-hero"><div class="about-mark"><img src="../assets/app-icon.svg" alt="课页图标"></div><div class="about-intro"><div class="eyebrow">ABOUT KEYE</div><h1>课页 <span>KEYE</span></h1><p>把课堂课件的获取、筛选和 PDF 导出，整理成一条清楚、安静的工作流。</p><div class="about-actions"><span class="about-version">当前版本 v0.4</span><button class="secondary" data-action="show-help">${icon('help')}查看使用说明</button></div></div><div class="about-decoration" aria-hidden="true"><i></i><i></i><i></i></div></section>
+    <div class="about-grid"><section class="panel about-card"><div class="about-card-icon">${icon('database')}</div><h2>资料留在本机</h2><p>课程、原始页面、筛选记录和设置保存在本地资料库中。排除页面不会删除原始素材。</p></section><section class="panel about-card"><div class="about-card-icon">${icon('school')}</div><h2>服务课堂资料</h2><p>面向华南理工大学课堂课件平台，也支持导入已有图片、PDF 和旧版下载目录。</p></section><section class="panel about-card"><div class="about-card-icon">${icon('export')}</div><h2>自由整理与导出</h2><p>可以直接快速导出，也可以逐页预览、排除无关画面，再生成更干净的 PDF。</p></section></div>
+    <section class="panel about-details"><div><div class="eyebrow">PROJECT INFORMATION</div><h2>项目信息</h2></div><dl><div><dt>应用名称</dt><dd>课页 · Keye</dd></div><div><dt>当前版本</dt><dd>v0.4</dd></div><div><dt>适用系统</dt><dd>Windows 10 / 11</dd></div><div><dt>项目主页</dt><dd>github.com/goooseby/ScutPPT</dd></div></dl><p class="about-note">课页是一个开源的个人课件整理工具。账号凭据仅在当前运行中使用，不会写入课件数据库。</p></section>`;
 }
 function showModal(title,body,actions=''){
   modal.classList.remove('fullscreen-modal');$('#modal-content').innerHTML=`<div class="modal-header"><h2>${title}</h2><button class="icon-button" data-action="close-modal" aria-label="关闭">${icon('close')}</button></div><div class="modal-body">${body}</div>${actions?`<div class="modal-actions">${actions}</div>`:''}`;if(!modal.open)modal.showModal();
@@ -249,6 +254,7 @@ async function handleClick(event){
   if(action==='quick-export'){if(await call('quickExport',{id:material().id}))toast('已快速导出到默认目录，可在任务页查看进度');return;}
   if(action==='confirm-export'){const id=material().id,name=$('#export-name').value.trim();if(!name)return toast('请填写文件名。');closeModal();if(await call('export',{id,name}))toast('PDF 已加入导出任务');return;}
   if(action==='open-library')return call('openLibrary');
+  if(action==='show-help')return showHelp();
   if(action==='choose-export-dir')return call('chooseExportDir');
   if(action==='choose-library')return showModal('切换资料库', '<p>选择一个新的空目录，或打开以前的资料库。当前资料会保留在原目录，不会自动搬迁。</p><p>请等待后台任务完成后再切换。</p>', '<button data-action="close-modal">取消</button><button class="primary" data-action="confirm-library">选择资料库目录</button>');
   if(action==='confirm-library'){closeModal();if(await call('chooseLibrary')){view.materialId=null;view.undo=[];view.filter='all';view.search='';navigate('library');}return;}

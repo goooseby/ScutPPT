@@ -1,11 +1,21 @@
 import os
+import sys
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
 
 class GuiTests(unittest.TestCase):
+    def test_in_repo_build_reuses_project_data(self):
+        from app import default_runtime_base
+
+        project = Path(__file__).resolve().parents[1]
+        executable = project / 'release' / '课页' / 'Keye.exe'
+        with patch.object(sys, 'frozen', True, create=True), patch.object(sys, 'executable', str(executable)):
+            self.assertEqual(default_runtime_base(), project)
+
     def test_windows_and_embedded_browser(self):
         from PySide6.QtCore import QEventLoop, QTimer
         from PySide6.QtWidgets import QApplication

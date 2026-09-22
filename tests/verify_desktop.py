@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from PIL import Image, ImageDraw, ImageFont
 from pypdf import PdfReader
-from PySide6.QtCore import QEventLoop, QTimer
+from PySide6.QtCore import QEventLoop, Qt, QTimer
 from PySide6.QtWidgets import QApplication, QDialog
 from auth.browser_login import ParsedAuth
 from app import KeyeWindow
@@ -83,10 +83,26 @@ def run():
             output=Path(__file__).resolve().parents[1]/'review'
             output.mkdir(exist_ok=True)
             assert window.web.grab().save(str(output/(name+'.png')))
+        def window_shot(name):
+            wait(300)
+            output=Path(__file__).resolve().parents[1]/'review'
+            output.mkdir(exist_ok=True)
+            assert window.grab().save(str(output/(name+'.png')))
         try:
             until("typeof ready!=='undefined' && ready")
+            assert window.windowFlags() & Qt.WindowType.FramelessWindowHint
+            assert window.title_bar.height()==36
+            assert window.title_bar.close_button.accessibleName()=='关闭'
+            window_shot('keye-custom-titlebar')
             assert js('state.materials.length')==0
             shot('keye-empty-library')
+            click('[data-nav="about"]');until("view.page==='about'")
+            assert js("document.querySelectorAll('.about-card').length")==3
+            assert js("document.querySelector('[data-nav=about]').classList.contains('active')")
+            click('[data-action="show-help"]');until('modal.open')
+            click('[data-action="close-modal"]')
+            shot('keye-about')
+            click('[data-nav="library"]');until("view.page==='library'")
             with patch('core.desktop.BrowserLoginDialog',Login), patch('core.desktop.fetch_schedules_in_range',return_value=[
                 {'title':'联调课程','course_id':'course-1','sub_id':'sub-1','day':'2026-09-05'}
             ]), patch('core.desktop.get_ppt_urls',return_value=[f'{url}/{i}.png' for i in (1,2,3)]):
@@ -102,6 +118,11 @@ def run():
             click(f'[data-nav="course/{cid}"]');until("view.page==='course'")
             click(f'[data-course-session="{mid}"]');until("view.page==='editor'")
             until("[...document.querySelectorAll('.page-art img')].every(img=>img.complete && img.naturalWidth>0)")
+            assert not js("!!document.querySelector('.lecture-rail')")
+            assert js("getComputedStyle(document.querySelector('.editor-toolbar')).position")=='sticky'
+            assert js("getComputedStyle(document.querySelector('.preview-panel')).position")=='sticky'
+            columns=js("getComputedStyle(document.querySelector('.pages-grid')).getPropertyValue('grid-template-columns')")
+            assert len(columns.split())==4,columns
             click('[data-toggle-page="2"]');until('material().excluded.includes(2) && !view.saving')
             assert window.bridge.library.get(mid)['excluded']==[2]
             click('[data-page-check="1"]')

@@ -67,7 +67,21 @@ def run():
         js("document.querySelector('tbody tr td:nth-child(3)').click()");until("view.page==='editor'")
         js("navigate('course/demo-network')");until("view.page==='course'")
         mid=js("sessions('demo-network')[6].id")
-        js(f"openMaterial({json.dumps(mid)})");until("view.page==='editor'");assert_layout();snap('03-editor-wide')
+        js(f"openMaterial({json.dumps(mid)})");until("view.page==='editor'");assert_layout()
+        assert not js("!!document.querySelector('.lecture-rail')")
+        assert js("getComputedStyle(document.querySelector('.editor-toolbar')).position")=='sticky'
+        assert js("getComputedStyle(document.querySelector('.preview-panel')).position")=='sticky'
+        grid=json.loads(js("""JSON.stringify((()=>{const node=document.querySelector('.pages-grid'),style=getComputedStyle(node);return {display:style.display,columns:style.getPropertyValue('grid-template-columns'),width:node.getBoundingClientRect().width,viewport:innerWidth}})())"""))
+        print('Editor grid:',grid)
+        assert len(grid['columns'].split())==4,grid
+        snap('03-editor-wide')
+        js("document.querySelector('.pages-grid').style.paddingBottom='1000px';main.scrollTop=450");wait(250)
+        sticky=json.loads(js("""JSON.stringify((()=>{const mainRect=main.getBoundingClientRect(),toolbar=document.querySelector('.editor-toolbar').getBoundingClientRect(),preview=document.querySelector('.preview-panel').getBoundingClientRect();return {scroll:main.scrollTop,mainTop:mainRect.top,toolbarTop:toolbar.top,previewTop:preview.top}})())"""))
+        assert sticky['scroll']>300,sticky
+        assert 20<=sticky['toolbarTop']-sticky['mainTop']<=45,sticky
+        assert abs(sticky['previewTop']-(sticky['toolbarTop']+76))<=2,sticky
+        snap('03a-editor-scrolled')
+        js("main.scrollTop=0;document.querySelector('.pages-grid').style.paddingBottom=''");wait(120)
         js("document.querySelector('[data-action=\"range\"]').click()");wait(150);assert_layout();snap('04-range-dialog')
         js("closeModal();navigate('acquire')");until("view.page==='acquire'");assert_layout();snap('05-acquire-wide')
         js("navigate('tasks')");until("view.page==='tasks'");assert_layout();snap('06-tasks-wide')
