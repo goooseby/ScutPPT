@@ -122,10 +122,19 @@ release/
 ├─ 课页/
 │  ├─ Keye.exe
 │  └─ ...运行依赖
-└─ 课页-Windows-x64.zip
+├─ Keye-Windows-x64.zip
+└─ update-index.json
 ```
 
 这是目录版应用，分享时请使用完整 ZIP，不要只复制 `Keye.exe`。
+
+### 应用内更新
+
+从 v0.2.0 起，打包版本可在“关于 → 应用更新”检查 GitHub 上的最新正式版，下载后重启安装。下载文件先进行 SHA-256 校验；安装助手只替换发布清单中的程序文件，资料库、设置和导出文件不在清单中。安装失败时会恢复被替换的旧程序文件。源码运行不执行自动更新。
+
+每次运行 `build.ps1` 会在 `release/` 生成 `Keye-Windows-x64.zip` 和 `update-index.json`。若要为上一版本制作文件级增量包，先将**上一正式版的完整程序目录**解压到 `release/previous/`，使其中包含 `update-manifest.json`；构建脚本会另生成 `Keye-update-from-v旧版本.zip`。发布 Release 时，把完整包、索引和可选的增量包一起上传。没有适用增量包的用户自动下载完整包。
+
+v0.1.1 及更早版本没有更新清单和更新助手，因此需要手动安装一次新版本，之后才可使用应用内更新。首次手动升级时请将新包中的**程序文件覆盖到原程序目录**，保留原目录中的 `library/`、`app-settings.json` 和 `config.json`；直接运行另一个新目录不会自动看到旧目录的资料。请保持 GitHub Release 标签与程序版本一致，例如 `v0.2.0`；不要将源码压缩包当作 Windows 程序包。
 
 ## 验证
 

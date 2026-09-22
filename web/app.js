@@ -4,6 +4,7 @@ let state={materials:[],tasks:[],settings:{exportMode:'review'},lastMaterial:nul
 let availableCourses=[];
 let desktop=null;
 let ready=false;
+const updateState={info:null,checking:false,downloading:false,ready:false,progress:0,error:''};
 const storageOK=true;
 const pending=new Map();
 let sequence=0;
@@ -66,6 +67,7 @@ function scheduleAutoScan(delay=650){
 }
 function hydrate(){document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));}
 function renderShell(){
+  $('#app-version').textContent='v'+(state.appVersion||'0.2.0');
   document.body.classList.toggle('editing-course',view.page==='editor');
   const running=state.tasks.filter(t=>['running','paused'].includes(t.status)).length;
   $('#nav').innerHTML=[['library','资料库','library'],['acquire','获取课件','download'],['tasks','任务','tasks'],['about','关于','about']].map(([id,label,i])=>`<button class="nav-item ${(view.page===id||(id==='library'&&['editor','course'].includes(view.page)))?'active':''}" data-nav="${id}">${icon(i)}${label}${id==='tasks'&&running?`<span class="nav-count">${running}</span>`:''}</button>`).join('');
@@ -114,9 +116,24 @@ function renderSettings(){
   main.innerHTML=`<div class="page-heading"><div><div class="eyebrow">MAKE ROOM FOR YOUR KNOWLEDGE</div><h1>设置</h1><p class="subtitle">让资料保存有序，让日常整理更顺手。</p></div></div><div class="settings-grid"><div><section class="panel settings-section"><h2>资料库与存储</h2><div class="setting-row"><div><h3>资料库位置</h3><p>包含原始素材、预览和整理记录，可以整体备份。</p></div><div class="actions"><button data-action="open-library">打开目录</button><button data-action="choose-library">切换资料库</button></div></div><div class="setting-path">${esc(s.libraryDir)}</div><div class="setting-row"><div><h3>保留原始页面</h3><p>排除不删除图片；回收站中的课件可以恢复。</p></div><span class="badge exported">默认保留</span></div><div class="setting-row"><div><h3>自动保存整理进度</h3><p>页面选择写入本地资料库，重新打开可继续。</p></div><span class="badge exported">已开启</span></div></section><section class="panel settings-section"><h2>下载与导出</h2><div class="setting-row"><div><h3>获取课件后</h3><p>下一次获取课件的默认处理方式。</p></div><select id="default-export" class="field-input"><option value="review" ${s.exportMode==='review'?'selected':''}>先整理，再导出</option><option value="direct" ${s.exportMode==='direct'?'selected':''}>直接导出 PDF</option></select></div><div class="setting-row"><div><h3>默认 PDF 导出目录</h3><p>首次导出时选择并记住，也可在这里主动修改。</p></div><button data-action="choose-export-dir">选择目录</button></div><div class="setting-path ${s.exportDir?'':'unset-path'}">${s.exportDir?esc(s.exportDir):'尚未设置 · 首次导出时再选择'}</div><div class="settings-numbers">${[['maxWorkers','图片并发数',1,32],['timeout','请求超时（秒）',5,600],['retries','下载尝试次数',1,10],['sleepMs','请求间隔（毫秒）',0,5000]].map(([id,label,min,max])=>`<label class="field">${label}<input type="number" id="setting-${id}" min="${min}" max="${max}" value="${s[id]}"></label>`).join('')}</div><button class="secondary" data-action="save-settings">保存下载参数</button></section></div><aside class="guide-card">${icon('folder')}<h3 style="margin-top:16px">资料留在本机</h3><p>课页自动生成课程封面；实际页面预览来自下载的课件或导入文件。</p><hr><div class="number">${activeMaterials().length}<span style="font-size:12px;margin-left:8px">份课件</span></div><p>SQLite 保存整理记录<br>原始素材长期保留<br>PDF 单独导出</p><hr><p>切换资料库会打开另一个目录，不会移动或删除当前资料。备份时请先退出应用，再复制整个资料库目录。</p></aside></div>`;
 }
 function renderAbout(){
-  main.innerHTML=`<section class="about-hero"><div class="about-mark"><img src="../assets/app-icon.svg" alt="课页图标"></div><div class="about-intro"><div class="eyebrow">ABOUT KEYE</div><h1>课页 <span>KEYE</span></h1><p>把课堂课件的获取、筛选和 PDF 导出，整理成一条清楚、安静的工作流。</p><div class="about-actions"><span class="about-version">当前版本 v0.4</span><button class="secondary" data-action="show-help">${icon('help')}查看使用说明</button></div></div><div class="about-decoration" aria-hidden="true"><i></i><i></i><i></i></div></section>
+  main.innerHTML=`<section class="about-hero"><div class="about-mark"><img src="../assets/app-icon.svg" alt="课页图标"></div><div class="about-intro"><div class="eyebrow">ABOUT KEYE</div><h1>课页 <span>KEYE</span></h1><p>把课堂课件的获取、筛选和 PDF 导出，整理成一条清楚、安静的工作流。</p><div class="about-actions"><span class="about-version">当前版本 v${esc(state.appVersion||'0.2.0')}</span><button class="secondary" data-action="show-help">${icon('help')}查看使用说明</button></div></div><div class="about-decoration" aria-hidden="true"><i></i><i></i><i></i></div></section>
     <div class="about-grid"><section class="panel about-card"><div class="about-card-icon">${icon('database')}</div><h2>资料留在本机</h2><p>课程、原始页面、筛选记录和设置保存在本地资料库中。排除页面不会删除原始素材。</p></section><section class="panel about-card"><div class="about-card-icon">${icon('school')}</div><h2>服务课堂资料</h2><p>面向华南理工大学课堂课件平台，也支持导入已有图片、PDF 和旧版下载目录。</p></section><section class="panel about-card"><div class="about-card-icon">${icon('export')}</div><h2>自由整理与导出</h2><p>可以直接快速导出，也可以逐页预览、排除无关画面，再生成更干净的 PDF。</p></section></div>
-    <section class="panel about-details"><div><div class="eyebrow">PROJECT INFORMATION</div><h2>项目信息</h2></div><dl><div><dt>应用名称</dt><dd>课页 · Keye</dd></div><div><dt>当前版本</dt><dd>v0.4</dd></div><div><dt>适用系统</dt><dd>Windows 10 / 11</dd></div><div><dt>项目主页</dt><dd>github.com/goooseby/ScutPPT</dd></div></dl><p class="about-note">课页是一个开源的个人课件整理工具。账号凭据仅在当前运行中使用，不会写入课件数据库。</p></section>`;
+    <section class="panel about-update"><div class="about-update-icon">${icon('download')}</div><div class="about-update-copy"><h2>应用更新</h2><p id="update-status" role="status"></p><div id="update-notes"></div><div class="update-meter" id="update-meter" hidden><span id="update-meter-fill"></span></div></div><div class="about-update-actions"><button data-action="check-update" ${state.packaged?'':'disabled'}>检查更新</button><button class="secondary" data-action="download-update" hidden>下载更新</button><button class="primary" data-action="install-update" hidden>重启并安装</button><button class="quiet" data-action="open-release">GitHub Releases ${icon('arrow')}</button></div></section>
+    <section class="panel about-details"><div><div class="eyebrow">PROJECT INFORMATION</div><h2>项目信息</h2></div><dl><div><dt>应用名称</dt><dd>课页 · Keye</dd></div><div><dt>当前版本</dt><dd>v${esc(state.appVersion||'0.2.0')}</dd></div><div><dt>适用系统</dt><dd>Windows 10 / 11</dd></div><div><dt>项目主页</dt><dd>github.com/goooseby/ScutPPT</dd></div></dl><p class="about-note">课页是一个开源的个人课件整理工具。账号凭据仅在当前运行中使用，不会写入课件数据库。</p></section>`;
+  renderUpdateStatus();
+}
+function renderUpdateStatus(){
+  const status=$('#update-status');if(!status)return;
+  const info=updateState.info;
+  status.textContent=updateState.error||(!state.packaged?'源码运行中；自动更新仅适用于打包版本。':updateState.checking?'正在检查 GitHub Releases…':updateState.downloading?`正在下载并校验更新：${updateState.progress}%`:updateState.ready?'下载和校验已完成。关闭课页后会安装更新，并自动重新打开。':info?.manual?info.manualReason||'请在 GitHub 下载完整包。':info?.available?`发现 v${info.latest} · ${info.incremental?'增量':'完整'}更新 · ${(info.size/1024/1024).toFixed(1)} MB`:info?'当前已是最新正式版本。':'点击检查更新，课页会从 GitHub 获取最新正式版本。');
+  const notes=$('#update-notes');
+  notes.textContent=info?.available&&info.notes?info.notes:'';
+  notes.hidden=!notes.textContent;
+  const meter=$('#update-meter');meter.hidden=!updateState.downloading;
+  $('#update-meter-fill').style.width=updateState.progress+'%';
+  $('[data-action="check-update"]').disabled=!state.packaged||updateState.checking||updateState.downloading;
+  $('[data-action="download-update"]').hidden=!(info?.available&&!info.manual&&!updateState.downloading&&!updateState.ready);
+  $('[data-action="install-update"]').hidden=!updateState.ready;
 }
 function showModal(title,body,actions=''){
   modal.classList.remove('fullscreen-modal');$('#modal-content').innerHTML=`<div class="modal-header"><h2>${title}</h2><button class="icon-button" data-action="close-modal" aria-label="关闭">${icon('close')}</button></div><div class="modal-body">${body}</div>${actions?`<div class="modal-actions">${actions}</div>`:''}`;if(!modal.open)modal.showModal();
@@ -255,6 +272,22 @@ async function handleClick(event){
   if(action==='confirm-export'){const id=material().id,name=$('#export-name').value.trim();if(!name)return toast('请填写文件名。');closeModal();if(await call('export',{id,name}))toast('PDF 已加入导出任务');return;}
   if(action==='open-library')return call('openLibrary');
   if(action==='show-help')return showHelp();
+  if(action==='check-update'){
+    updateState.checking=true;updateState.info=null;updateState.ready=false;updateState.error='';renderUpdateStatus();
+    try{updateState.info=await call('checkUpdate');}
+    catch(error){updateState.error=error.message;}
+    finally{updateState.checking=false;renderUpdateStatus();}
+    return;
+  }
+  if(action==='download-update'){
+    updateState.downloading=true;updateState.progress=0;updateState.error='';renderUpdateStatus();
+    try{await call('downloadUpdate');updateState.ready=true;}
+    catch(error){updateState.error=error.message;}
+    finally{updateState.downloading=false;renderUpdateStatus();}
+    return;
+  }
+  if(action==='install-update')return call('installUpdate');
+  if(action==='open-release')return call('openRelease');
   if(action==='choose-export-dir')return call('chooseExportDir');
   if(action==='choose-library')return showModal('切换资料库', '<p>选择一个新的空目录，或打开以前的资料库。当前资料会保留在原目录，不会自动搬迁。</p><p>请等待后台任务完成后再切换。</p>', '<button data-action="close-modal">取消</button><button class="primary" data-action="confirm-library">选择资料库目录</button>');
   if(action==='confirm-library'){closeModal();if(await call('chooseLibrary')){view.materialId=null;view.undo=[];view.filter='all';view.search='';navigate('library');}return;}
@@ -304,5 +337,6 @@ else new QWebChannel(qt.webChannelTransport,channel=>{
   desktop.changed.connect(payload=>applySnapshot(JSON.parse(payload)));
   desktop.taskChanged.connect(payload=>{const task=JSON.parse(payload),index=state.tasks.findIndex(t=>t.id===task.id);if(index>=0)state.tasks[index]=task;renderShell();if(view.page==='tasks')renderTasks();});
   desktop.notice.connect(toast);
+  desktop.updateProgress.connect((done,total)=>{updateState.progress=Math.min(100,Math.round(done/total*100));renderUpdateStatus();});
   call('snapshot').then(snapshot=>{applySnapshot(snapshot);route();}).catch(error=>{main.innerHTML=empty('资料库打开失败',esc(error.message));});
 });

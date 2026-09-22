@@ -2,6 +2,8 @@
 import os
 import sys
 import ctypes
+import json
+import shutil
 from pathlib import Path
 from core.webengine import configure_webengine
 
@@ -19,6 +21,7 @@ from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngin
 from PySide6.QtWebEngineWidgets import QWebEngineView
 
 from core.desktop import DesktopBridge
+from core.version import VERSION
 
 
 def default_runtime_base():
@@ -32,6 +35,19 @@ def default_runtime_base():
         if (project_root / '.git').is_dir() and (project_root / 'Keye.spec').is_file():
             return project_root
     return executable_dir
+
+
+def cleanup_completed_update():
+    if not getattr(sys, 'frozen', False):
+        return
+    install_dir = Path(sys.executable).parent.resolve()
+    stage = install_dir / '.keye-update' / ('v' + VERSION)
+    marker = stage / 'update-success.json'
+    try:
+        if marker.is_file() and json.loads(marker.read_text(encoding='utf-8')).get('version') == VERSION:
+            shutil.rmtree(stage)
+    except (OSError, ValueError):
+        pass  # Retry on a later launch if the helper has not exited yet.
 
 
 class WindowButton(QToolButton):
@@ -259,6 +275,7 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName('Keye')
     app.setApplicationDisplayName('课页')
+    app.setApplicationVersion(VERSION)
     resource_base = Path(getattr(sys, '_MEIPASS', Path(__file__).parent)).resolve()
     app.setWindowIcon(QIcon(str(resource_base / 'assets' / 'app-icon.ico')))
     base = Path(__file__).parent
@@ -269,6 +286,7 @@ def main():
         return 0
     window = KeyeWindow()
     window.show()
+    QTimer.singleShot(15000, cleanup_completed_update)
     result = app.exec()
     # Ensure the page is released before its profile.
     from shiboken6 import delete

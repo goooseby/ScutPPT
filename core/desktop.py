@@ -3,6 +3,10 @@ import copy
 import datetime
 import json
 import re
+import os
+import shutil
+import subprocess
+import sys
 import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -16,6 +20,8 @@ from auth.browser_login import BrowserLoginDialog
 from core.config import ConfigStore
 from core.downloader import RuntimeCfg, make_session, fetch_schedules_in_range, get_ppt_urls, download_images, safe_name
 from core.library import Library, IMAGE_EXTENSIONS, course_identity, offering_identity, natural_key, timestamp
+from core.version import VERSION
+from core.update import UpdateClient
 
 
 class Control:
@@ -41,6 +47,8 @@ class DesktopBridge(QObject):
     notice = Signal(str)
     _progress = Signal(str, int, str)
     _finished = Signal(str, object, object)
+    _update_reply = Signal(str, object, object)
+    updateProgress = Signal(int, int)
 
     def __init__(self, base_dir, parent=None, library_root=None):
         super().__init__(parent)
@@ -59,6 +67,10 @@ class DesktopBridge(QObject):
         self.scanned = False
         self.controls = {}
         self.executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix='keye')
+        self.updates = UpdateClient(Path(sys.executable).parent) if getattr(sys, 'frozen', False) else None
+        self.update_package = None
+        self.update_busy = False
+        self.update_cancel = threading.Event()
         self.jobs = self.library.tasks()
         for task in self.jobs:
             if task['status'] in ('running', 'paused'):
@@ -66,6 +78,7 @@ class DesktopBridge(QObject):
                 self.library.task_put(task)
         self._progress.connect(self.on_progress)
         self._finished.connect(self.on_finished)
+        self._update_reply.connect(self.finish_update_request)
 
     def settings(self):
         return {**{'exportMode': 'review', 'exportDir': self.app_cfg.download_dir or '',
@@ -78,6 +91,8 @@ class DesktopBridge(QObject):
                 'reviewQueue': self.library.setting('reviewQueue', []), 'tasks': self.jobs, 'settings': self.settings(),
                 'lastMaterial': self.library.setting('lastMaterial'), 'loggedIn': self.auth is not None,
                 'courses': self.courses, 'scanned': self.scanned, 'scanError': self.scan_error,
+                'appVersion': VERSION,
+                'packaged': self.updates is not None,
                 'scanning': any(t['type']=='scan' and t['status']=='running' for t in self.jobs)}
 
     def publish(self):
@@ -86,6 +101,9 @@ class DesktopBridge(QObject):
     @Slot(str, str, str)
     def request(self, request_id, command, payload):
         try:
+            if command in ('checkUpdate', 'downloadUpdate'):
+                self.begin_update_request(request_id, command)
+                return
             if command == 'login':
                 # Return from the WebChannel IPC call before opening another web view.
                 # A nested dialog.exec() here stalls Chromium until that dialog closes.
@@ -95,6 +113,36 @@ class DesktopBridge(QObject):
             self.response.emit(request_id, json.dumps({'ok': True, 'result': result}, ensure_ascii=False))
         except Exception as exc:
             self.response.emit(request_id, json.dumps({'ok': False, 'error': self.clean_error(exc)}, ensure_ascii=False))
+
+    def begin_update_request(self, request_id, command):
+        if not self.updates:
+            raise ValueError('源码运行不支持自动更新，请使用打包版本。')
+        if self.update_busy:
+            raise ValueError('更新操作正在进行，请稍候。')
+        if command == 'downloadUpdate' and not self.updates.available:
+            raise ValueError('请先检查更新。')
+        self.update_busy = True
+        self.update_cancel.clear()
+        def work():
+            try:
+                if command == 'checkUpdate':
+                    result = self.updates.check()
+                    self.update_package = None
+                else:
+                    package = self.updates.download(
+                        lambda done, total: self.updateProgress.emit(done, total),
+                        self.update_cancel.is_set)
+                    self.update_package = package
+                    result = {'ready': True}
+                self._update_reply.emit(request_id, result, None)
+            except Exception as exc:
+                self._update_reply.emit(request_id, None, self.clean_error(exc))
+        self.executor.submit(work)
+
+    def finish_update_request(self, request_id, result, error):
+        self.update_busy = False
+        self.response.emit(request_id, json.dumps(
+            {'ok': error is None, 'result': result, 'error': error}, ensure_ascii=False))
 
     def begin_login(self, request_id):
         try:
@@ -147,6 +195,29 @@ class DesktopBridge(QObject):
     def dispatch(self, command, data):
         if command == 'snapshot':
             return self.snapshot()
+        if command == 'installUpdate':
+            if not self.updates or not self.update_package or not self.update_package.is_file():
+                raise ValueError('请先下载并校验更新。')
+            if self.update_busy:
+                raise ValueError('请等待更新下载完成。')
+            if self.controls:
+                raise ValueError('请等待后台任务完成后再更新。')
+            stage = self.update_package.parent
+            helper = Path(sys.executable).parent / 'KeyeUpdater.exe'
+            if not helper.is_file():
+                raise ValueError('更新助手缺失，请手动安装完整版本。')
+            detached = stage / 'KeyeUpdater.exe'
+            shutil.copy2(helper, detached)
+            flags = subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+            subprocess.Popen([str(detached), '--install', str(self.updates.install_dir),
+                              '--package', str(self.update_package),
+                              '--sha256', self.updates.available['sha256'],
+                              '--pid', str(os.getpid())], cwd=str(stage), creationflags=flags)
+            QTimer.singleShot(0, self.parent().close)
+            return True
+        if command == 'openRelease':
+            QDesktopServices.openUrl(QUrl(f'https://github.com/goooseby/ScutPPT/releases/latest'))
+            return True
         if command == 'saveCourse':
             result = self.library.save_course(data['title'], data.get('id'), data.get('term', ''),
                                               data.get('coverStyle'), data.get('coverPalette'))
@@ -640,6 +711,7 @@ class DesktopBridge(QObject):
         self.submit('import', '导入本地资料', work, paths=list(map(str, paths)), folder=folder, courseId=course_id)
 
     def shutdown(self):
+        self.update_cancel.set()
         for control in self.controls.values():
             control.cancelled.set()
             control.paused.set()
